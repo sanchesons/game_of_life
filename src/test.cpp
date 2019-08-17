@@ -80,6 +80,162 @@ void test_glider()
     }
 }
 
+void test_over_neighbors()
+{
+    struct Sample
+    {
+        struct In
+        {
+            gol::Game::Citizens citizens;
+        };
+
+        struct Out
+        {
+            gol::Game::Citizens citizens;
+            gol::Game::NextStatus status;
+        };
+
+        In in;
+        Out out;
+    };
+
+    auto tests = std::array<Sample,7>{{
+        { // 1
+            {
+                {
+                    {0,1},{1,1}
+                }
+            },
+            {
+                {
+                },
+                gol::Game::NextStatus::ALL_DIE
+            },
+        },
+        { // 2
+            {
+                {
+                    {0,0},
+                    {0,1},{1,1}
+                }
+            },
+            {
+                {
+                    {0,0},{1,0},
+                    {0,1},{1,1}
+                },
+                gol::Game::NextStatus::OK
+            }
+        },
+        { // 3
+            {
+                {
+                    {0,0},{1,0},
+                    {0,1},{1,1}
+                }
+            },
+            {
+                {
+                    {0,0},{1,0},
+                    {0,1},{1,1}
+                },
+                gol::Game::NextStatus::STILL_LIFES
+            }
+        },
+        { // 4
+            {
+                {
+                    {0,0},{1,0},{2,0},
+                    {0,1},{1,1}
+                }
+            },
+            {
+                {
+                          {1,-1},
+                    {0,0},      {2,0},
+                    {0,1},      {2,1}
+                },
+                gol::Game::NextStatus::OK
+            }
+        },
+        { // 5
+            {
+                {
+                    {0,0},{1,0},{2,0},
+                    {0,1},{1,1},{2,1}
+                }
+            },
+            {
+                {
+                          {1,-1},
+                    {0,0},      {2,0},
+                    {0,1},      {2,1},
+                          {1,2}
+                },
+                gol::Game::NextStatus::OK
+            }
+        },
+        { // 6
+            {
+                {
+                    {0,0},{1,0},{2,0},
+                    {0,1},{1,1},{2,1},
+                                {2,2}
+                }
+            },
+            {
+                {
+                          {1,-1},
+                    {0,0},      {2,0},
+                    {0,1},           {3,1},
+                                {2,2}
+                },
+                gol::Game::NextStatus::OK
+            }
+        },
+        { // 7
+            {
+                {
+                    {0,0},{1,0},{2,0},
+                    {0,1},{1,1},{2,1},
+                          {1,2},{2,2}
+                }
+            },
+            {
+                {
+                          {1,-1},
+                    {0,0},      {2,0},
+                                      {3,1},
+                    {0,2},      {2,2}
+                },
+                gol::Game::NextStatus::OK
+            }
+        }
+    }};
+
+    for (auto test = tests.begin(); test != tests.end(); ++test) {
+        auto game = gol::Game(test->in.citizens);
+        if (game.next() != test->out.status) {
+            throw std::logic_error("test_over_neighbors: case#"+std::to_string(std::distance(tests.begin(),test)));
+        }
+
+        if (game.citizens() != test->out.citizens) {
+            throw std::logic_error("test_over_neighbors: new generation is not correct case#"+std::to_string(std::distance(tests.begin(),test)));
+        }
+    }
+}
+
+void test_not_enough()
+{
+    auto game = gol::Game(gol::Game::Citizens{
+        {0,0},{0,1}
+    });
+
+    if (game.next() != gol::Game::NextStatus::ALL_DIE) {
+        throw std::logic_error("test_not_enough");
+    }
+}
+
 int main(int argc, const char* args[])
 {
     try {
@@ -87,6 +243,8 @@ int main(int argc, const char* args[])
         test_still_lifes();
         test_out_of_rang();
         test_glider();
+        test_over_neighbors();
+        test_not_enough();
     } catch (const std::logic_error& e) {
         std::cout << "FILED: " << e.what() << std::endl;
         return 1;
