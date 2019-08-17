@@ -44,29 +44,6 @@ struct Position
 
 }
 
-namespace std
-{
-
-template<>
-struct hash<gol::Position>
-{
-    template<typename T>
-    static void hash_combine(size_t& seed, const T& v)
-    {
-        seed ^= std::hash<T>()(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-    }
-
-    std::size_t operator()(const gol::Position& position) const noexcept
-    {
-        auto seed = std::size_t(0);
-        hash_combine(seed, position.x);
-        hash_combine(seed, position.y);
-        return seed;
-    }
-};
-
-}
-
 namespace gol
 {
 
@@ -75,7 +52,24 @@ using Cell = Position;
 class Game
 {
 public:
-    using Citizens = std::unordered_set<Cell>;
+    struct CellHash
+    {
+        template<typename T>
+        static void hash_combine(size_t& seed, const T& v)
+        {
+            seed ^= std::hash<T>()(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        }
+
+        size_t operator()(const Cell& cell) const
+        {
+            auto seed = std::size_t(0);
+            hash_combine(seed, cell.x);
+            hash_combine(seed, cell.y);
+            return seed;
+        }
+    };
+
+    using Citizens = std::unordered_set<Cell, CellHash>;
 
     enum NextStatus
     {
@@ -107,7 +101,7 @@ public:
     {}
 
     Game(Citizens&& citizens) :
-        m_citizens(std::forward<Citizens>(citizens)),
+        m_citizens(std::move(citizens)),
         m_state(INIT)
     {}
 
@@ -165,7 +159,7 @@ private:
 
     bool is_birth(const Cell& cell) const
     {
-        return count_neighbors(cell) == 3;
+        return m_citizens.count(cell) == 0 && count_neighbors(cell) == 3;
     }
 
     void remove_died(const std::vector<Cell>& generation_died_list)
@@ -194,13 +188,12 @@ private:
 
             const auto around_cells = get_around_cells(cell);
             for (const auto& cell : around_cells) {
-
                 if (is_birth(cell)) {
                     m_generation_birth_list.push_back(cell);
                 }
             }
             const auto amount_neighbors = count_neighbors(cell);
-            if (!(amount_neighbors & 2)) { // cell will save if amount of neighbors 2 or 3
+            if (!(amount_neighbors == 2 || amount_neighbors == 3)) {
                 m_generation_died_list.push_back(cell);
             }
         }
