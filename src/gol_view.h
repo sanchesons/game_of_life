@@ -26,6 +26,7 @@ public:
     void print()
     {
         std::cout << *this << std::endl;
+        std::cout.flush();
     }
 
     friend std::ostream& operator<<(std::ostream& out, const GameView& view)
